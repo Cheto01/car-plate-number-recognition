@@ -1,0 +1,202 @@
+# ALPR System Configuration
+
+# Application Settings
+app:
+  name: "ALPR System"
+  version: "2.0.0"
+  environment: "development"  # development, staging, production
+  debug: true
+  log_level: "INFO"
+
+# Model Configuration
+models:
+  # Vehicle Detection Model
+  vehicle_detector:
+    name: "yolov11n"
+    path: "data/models/yolov11n.pt"
+    confidence_threshold: 0.5
+    iou_threshold: 0.45
+    device: "cuda"  # cuda, cpu, mps (for Apple Silicon)
+    classes: [2, 3, 5, 7]  # car, motorcycle, bus, truck
+
+  # License Plate Detection Model
+  plate_detector:
+    name: "license_plate_detector"
+    path: "data/models/license_plate_detector.pt"
+    confidence_threshold: 0.6
+    iou_threshold: 0.4
+    device: "cuda"
+
+  # OCR Configuration
+  ocr:
+    primary_engine: "paddleocr"  # paddleocr, easyocr, tesseract
+    fallback_engine: "easyocr"
+    use_ensemble: true
+    languages: ["en"]
+    confidence_threshold: 0.7
+    gpu: true
+
+# Tracking Configuration
+tracking:
+  tracker_type: "bytetrack"  # bytetrack, botsort
+  track_thresh: 0.5
+  track_buffer: 30
+  match_thresh: 0.8
+  min_box_area: 100
+  mot20: false
+
+# Data Pipeline Configuration
+pipeline:
+  input:
+    source_type: "video"  # video, stream, images
+    batch_size: 1
+    frame_skip: 0  # Process every Nth frame (0 = process all)
+    resize_width: 1280
+    resize_height: 720
+
+  processing:
+    enable_interpolation: true
+    enable_quality_filter: true
+    min_detection_quality: 0.6
+    max_frames_gap: 10  # Max frames to interpolate
+
+  output:
+    save_video: true
+    save_images: false
+    save_csv: true
+    save_database: true
+    video_codec: "mp4v"
+    video_fps: 30
+
+# Database Configuration
+database:
+  # SQLite (default for development)
+  sqlite:
+    enabled: true
+    path: "data/processed/alpr.db"
+
+  # PostgreSQL (production)
+  postgres:
+    enabled: false
+    host: "localhost"
+    port: 5432
+    database: "alpr_db"
+    username: "alpr_user"
+    password: "${POSTGRES_PASSWORD}"  # From environment
+    pool_size: 10
+    max_overflow: 20
+
+  # MongoDB (optional for analytics)
+  mongodb:
+    enabled: false
+    host: "localhost"
+    port: 27017
+    database: "alpr_analytics"
+    username: "alpr_user"
+    password: "${MONGODB_PASSWORD}"
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  reload: true  # Auto-reload on code changes (dev only)
+  cors_origins: ["*"]
+  max_upload_size: 524288000  # 500 MB
+  rate_limit: "100/minute"
+
+# MLflow Configuration
+mlflow:
+  enabled: true
+  tracking_uri: "file:./mlruns"
+  experiment_name: "alpr-experiments"
+  artifact_location: "./mlruns/artifacts"
+
+# Analytics Configuration
+analytics:
+  dashboard:
+    enabled: true
+    port: 8501
+    theme: "dark"
+
+  metrics:
+    - "vehicle_count"
+    - "plate_detection_rate"
+    - "peak_traffic_hours"
+    - "vehicle_type_distribution"
+    - "average_speed"
+    - "plate_frequency"
+
+  reports:
+    generate_daily: true
+    generate_weekly: true
+    export_format: ["pdf", "html", "json"]
+
+# Logging Configuration
+logging:
+  version: 1
+  disable_existing_loggers: false
+
+  formatters:
+    standard:
+      format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    json:
+      class: "pythonjsonlogger.jsonlogger.JsonFormatter"
+      format: "%(asctime)s %(name)s %(levelname)s %(message)s"
+
+  handlers:
+    console:
+      class: "logging.StreamHandler"
+      level: "DEBUG"
+      formatter: "standard"
+      stream: "ext://sys.stdout"
+
+    file:
+      class: "logging.handlers.RotatingFileHandler"
+      level: "INFO"
+      formatter: "json"
+      filename: "logs/alpr.log"
+      maxBytes: 10485760  # 10MB
+      backupCount: 10
+
+    error_file:
+      class: "logging.handlers.RotatingFileHandler"
+      level: "ERROR"
+      formatter: "json"
+      filename: "logs/errors.log"
+      maxBytes: 10485760
+      backupCount: 10
+
+  root:
+    level: "INFO"
+    handlers: ["console", "file", "error_file"]
+
+# Monitoring Configuration
+monitoring:
+  prometheus:
+    enabled: true
+    port: 9090
+
+  sentry:
+    enabled: false
+    dsn: "${SENTRY_DSN}"
+    traces_sample_rate: 0.1
+
+# Cache Configuration
+cache:
+  redis:
+    enabled: false
+    host: "localhost"
+    port: 6379
+    db: 0
+    password: "${REDIS_PASSWORD}"
+    ttl: 3600  # seconds
+
+# Performance Configuration
+performance:
+  use_gpu: true
+  gpu_batch_size: 8
+  num_workers: 4
+  prefetch_factor: 2
+  pin_memory: true
+  mixed_precision: true  # Use FP16 for faster inference
